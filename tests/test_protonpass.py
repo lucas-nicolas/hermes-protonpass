@@ -84,8 +84,10 @@ def test_bad_token_is_auth_failed(fake, hermes_home, monkeypatch):
 def test_user_session_mode_never_logs_in(fake, hermes_home):
     fake.set(items={REF: "sk"})
     no_session = pp.ProtonPassSource().fetch(_cfg(cache_ttl_seconds=0), hermes_home)
-    assert not no_session.secrets and "authenticated client" in no_session.warnings[0]
-    assert "2026-10-14T" not in no_session.warnings[0], "pass-cli log lines are stripped"
+    assert not no_session.secrets and no_session.error_kind == ErrorKind.AUTH_FAILED
+    assert "authenticated client" in no_session.error and not no_session.warnings
+    assert "2026-10-14T" not in no_session.error, "pass-cli log lines are stripped"
+    assert "pass-cli login" in pp.ProtonPassSource().remediation(no_session.error_kind, {})
     (fake.home / ".local/share/proton-pass-cli/.session").mkdir(parents=True)
     (fake.home / ".local/share/proton-pass-cli/.session/ok").write_text("1")
     result = pp.ProtonPassSource().fetch(_cfg(cache_ttl_seconds=0), hermes_home)

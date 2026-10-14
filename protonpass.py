@@ -269,19 +269,26 @@ def clear_caches(home_path: Optional[Path] = None) -> None:
 
 
 def read_refs(session: PassSession, refs: dict[str, str]) -> tuple[dict[str, str], list[str]]:
-    """Resolve each ref; per-ref failures become warnings (never the stdout, which may hold secrets)."""
+    """Resolve each ref; per-ref failures become warnings (never the stdout, which may hold secrets).
+    If *every* ref failed for an authentication reason, raise one AUTH_FAILED error instead, so
+    Hermes prints a single line plus its remediation hint rather than N identical warnings."""
     secrets: dict[str, str] = {}
     warnings: list[str] = []
+    auth_failures: list[str] = []
     for name in sorted(refs):
         # 3-segment URI (pass-cli 2.1.x ignores --field with a 2-segment URI); `--` stops flag parsing
         proc = session.call("item", "view", "--", refs[name], reason=f"Hermes startup: load {name}")
         value = (proc.stdout or "").rstrip("\r\n")
         if proc.returncode != 0:
             warnings.append(f"{name}: pass-cli could not read {refs[name]!r}: {_detail(proc)}")
+            if _classify(proc.stderr, refs[name]) == ErrorKind.AUTH_FAILED:
+                auth_failures.append(_detail(proc))
         elif not value.strip():
             warnings.append(f"{name}: pass-cli returned an empty value for {refs[name]!r}")
         else:
             secrets[name] = value
+    if refs and len(auth_failures) == len(refs):
+        raise PassCliError(f"pass-cli is not authenticated: {auth_failures[0]}", ErrorKind.AUTH_FAILED)
     return secrets, warnings
 
 
