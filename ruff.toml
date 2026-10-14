@@ -1,0 +1,9 @@
+# Mirrors NousResearch/hermes-agent's [tool.ruff] lint selection, plus pyflakes/syntax checks.
+preview = true  # PLW1514 (explicit text encoding; Windows defaults to cp1252) is a preview rule
+line-length = 120
+
+[lint]
+select = ["F", "E9", "PLW1514", "ASYNC210", "ASYNC220", "ASYNC221", "ASYNC251"]
+
+[lint.per-file-ignores]
+"tests/**" = ["PLW1514"]

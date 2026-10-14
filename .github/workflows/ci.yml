@@ -11,6 +11,15 @@ permissions:
   contents: read
 
 jobs:
+  lint:
+    name: Lint (ruff, Hermes rule set)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: ruff check (ruff.toml mirrors hermes-agent's selection)
+        run: uvx ruff@0.15.10 check .
+
   tests:
     name: Tests on Hermes ${{ matrix.hermes }} (py${{ matrix.python }})
     runs-on: ubuntu-latest

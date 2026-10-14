@@ -9,7 +9,16 @@ default ~/.hermes/hermes-agent), PP_E2E_SHA (plugin commit to install, default t
 Never prints secret values or tokens: only booleans, lengths, provenance, call counts.
 Creates throwaway items + test tokens and always deletes them (finally:).
 """
-import json, os, re, secrets, shutil, stat, subprocess, sys, tempfile, time
+import json
+import os
+import re
+import secrets
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+import time
 from pathlib import Path
 
 PASS = os.environ.get("PASS_CLI") or shutil.which("pass-cli") or "pass-cli"
@@ -154,7 +163,7 @@ try:
     check("bulk: env-titled item injected, provenance = protonpass_vault",
           v.get(ITEM_ENV, {}).get("equals") and v.get(ITEM_ENV, {}).get("source") == "protonpass_vault", str(v.get(ITEM_ENV)))
     check("bulk: non-env-titled item ignored", not v.get("HERMES_E2E_OTHER", {}).get("present"))
-    check("startup lines", any("applied" in l for l in p["startup"]), " | ".join(p["startup"]))
+    check("startup lines", any("applied" in line for line in p["startup"]), " | ".join(p["startup"]))
     check("own-session mode never logs in", "login" not in calls1.read_text().split(), calls1.read_text().split().count("login"))
     s = hermes(home1, "protonpass", "sync")
     check("`hermes protonpass sync` dry run lists both vars, no values",
@@ -172,7 +181,7 @@ try:
     v = p["vars"]
     check("agent token: mapped ref resolved", v.get("PP_E2E_MAPPED", {}).get("equals"), str(v.get("PP_E2E_MAPPED")))
     check("agent token: bulk refused with actionable hint",
-          any("agent" in l.lower() and "mapped" in l.lower() for l in p["startup"]), " | ".join(p["startup"])[-300:])
+          any("agent" in line.lower() and "mapped" in line.lower() for line in p["startup"]), " | ".join(p["startup"])[-300:])
     sess = list((home2 / "cache" / "protonpass").glob("*"))
     check("plugin-owned session dir created, 0700",
           len(sess) == 1 and stat.S_IMODE(sess[0].stat().st_mode) == 0o700, str([x.name for x in sess]))
