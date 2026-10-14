@@ -63,6 +63,14 @@ def test_expired_session_relogs_once(fake, hermes_home, monkeypatch):
     assert fake.verbs().count("login") == 2
 
 
+def test_marker_words_in_ref_do_not_trigger_relogin(fake, hermes_home, monkeypatch):
+    _pat(monkeypatch)
+    ref = "pass://Vault/expired login session card/password"  # missing item; stderr echoes the ref
+    result = pp.ProtonPassSource().fetch(_cfg(env={"CARD": ref}), hermes_home)
+    assert not result.secrets and "item not found" in result.warnings[0]
+    assert fake.verbs().count("login") == 1
+
+
 def test_bad_token_is_auth_failed(fake, hermes_home, monkeypatch):
     fake.set(leak=True)  # even if pass-cli echoed the token, Hermes must not surface it
     _pat(monkeypatch, "pst_wrong::KEY")

@@ -61,7 +61,11 @@ class PassCliError(RuntimeError):
         self.kind = kind
 
 
-def _classify(stderr: str) -> ErrorKind:
+def _classify(stderr: str, *echoed: str) -> ErrorKind:
+    """Map pass-cli stderr to an ErrorKind. ``echoed`` (refs/vault names we passed) are removed
+    first so an item called e.g. "expired card" can't masquerade as an auth failure."""
+    for text in echoed:
+        stderr = stderr.replace(text, "")
     low = stderr.lower()
     if any(m in low for m in _AUTH_MARKERS):
         return ErrorKind.AUTH_FAILED
@@ -208,7 +212,7 @@ class PassSession:
         """Run a read; on an auth-looking failure re-login once (PAT mode) and retry."""
         proc = self.run(*args, reason=reason)
         if (proc.returncode != 0 and self.dir is not None and not self._relogged
-                and _classify(proc.stderr) == ErrorKind.AUTH_FAILED):
+                and _classify(proc.stderr, *args) == ErrorKind.AUTH_FAILED):
             self._relogged = True
             self.login()
             proc = self.run(*args, reason=reason)
@@ -304,7 +308,7 @@ def read_vault(session: PassSession, vault: str, field: str) -> tuple[dict[str, 
         detail = _detail(proc)
         if "agent" in detail.lower():
             detail += " (AI-agent tokens cannot list secrets: use mapped pass:// refs instead)"
-        raise PassCliError(f"pass-cli could not list vault {vault!r}: {detail}", _classify(detail))
+        raise PassCliError(f"pass-cli could not list vault {vault!r}: {detail}", _classify(detail, vault))
     try:
         payload = json.loads(proc.stdout or "")
     except ValueError as exc:
