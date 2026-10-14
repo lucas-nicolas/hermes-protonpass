@@ -4,19 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "17 5 * * 1"   # weekly: catch breaking changes on Hermes main
 
 permissions:
   contents: read
 
 jobs:
   tests:
-    name: Tests on Hermes ${{ matrix.hermes }}
+    name: Tests on Hermes ${{ matrix.hermes }} (py${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # oldest supported (requires_hermes floor), latest release, development head
-        hermes: [v2026.8.13, v0.22.0, main]
+        include:
+          - hermes: v2026.8.13   # v0.20.1, the requires_hermes floor
+            python: "3.11"
+          - hermes: v0.22.0      # latest release
+            python: "3.14"
+          - hermes: main         # development head
+            python: "3.14"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,13 +34,13 @@ jobs:
           ref: ${{ matrix.hermes }}
           path: hermes-agent
       - uses: astral-sh/setup-uv@v6
-      - name: Install Hermes
+      - name: Install Hermes from its lockfile
         run: |
-          uv venv --python 3.11 venv
-          uv pip install --python venv/bin/python -e "./hermes-agent" pytest
+          uv sync --project hermes-agent --locked --python ${{ matrix.python }}
+          uv pip install --python hermes-agent/.venv/bin/python pytest
       - name: Run plugin tests (fake pass-cli + Hermes conformance kit)
         working-directory: plugin
-        run: ../venv/bin/python -m pytest tests -q
+        run: ../hermes-agent/.venv/bin/python -m pytest tests -q
 
   validate:
     name: Catalog validation (hermes plugins validate)
@@ -48,11 +55,9 @@ jobs:
           ref: v0.22.0
           path: hermes-agent
       - uses: astral-sh/setup-uv@v6
-      - name: Install Hermes
-        run: |
-          uv venv --python 3.11 venv
-          uv pip install --python venv/bin/python -e "./hermes-agent"
+      - name: Install Hermes from its lockfile
+        run: uv sync --project hermes-agent --locked --python 3.14
       - name: Validate plugin
         env:
           HERMES_HOME: ${{ runner.temp }}/hermes-home
-        run: venv/bin/hermes plugins validate "$GITHUB_WORKSPACE/plugin"
+        run: hermes-agent/.venv/bin/hermes plugins validate "$GITHUB_WORKSPACE/plugin"
