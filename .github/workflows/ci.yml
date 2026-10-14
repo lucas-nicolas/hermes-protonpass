@@ -1,0 +1,58 @@
+name: Plugin CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests on Hermes ${{ matrix.hermes }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # oldest supported (requires_hermes floor), latest release, development head
+        hermes: [v2026.8.13, v0.22.0, main]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+      - uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          ref: ${{ matrix.hermes }}
+          path: hermes-agent
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Hermes
+        run: |
+          uv venv --python 3.11 venv
+          uv pip install --python venv/bin/python -e "./hermes-agent" pytest
+      - name: Run plugin tests (fake pass-cli + Hermes conformance kit)
+        working-directory: plugin
+        run: ../venv/bin/python -m pytest tests -q
+
+  validate:
+    name: Catalog validation (hermes plugins validate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+      - uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          ref: v0.22.0
+          path: hermes-agent
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Hermes
+        run: |
+          uv venv --python 3.11 venv
+          uv pip install --python venv/bin/python -e "./hermes-agent"
+      - name: Validate plugin
+        env:
+          HERMES_HOME: ${{ runner.temp }}/hermes-home
+        run: venv/bin/hermes plugins validate "$GITHUB_WORKSPACE/plugin"

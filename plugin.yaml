@@ -1,0 +1,17 @@
+manifest_version: 2
+api_version: 1
+name: protonpass
+version: "0.1.0"
+description: >-
+  Proton Pass secret source: resolve pass://vault/item/field references (or a whole vault)
+  into Hermes credentials at startup through the official pass-cli.
+author:
+  name: Lucas Nicolas
+homepage: https://github.com/lucas-nicolas/hermes-protonpass
+license: MIT
+kind: standalone
+requires_hermes: ">=0.20.1"
+tags:
+  - secrets
+  - protonpass
+  - credentials
