@@ -283,6 +283,26 @@ def test_register_wires_sources_and_cli():
     assert seen == {"sources": ["protonpass", "protonpass_vault"], "cli": "protonpass"}
 
 
+def test_coexists_with_password_store_pass_scheme(monkeypatch):
+    """The catalog's `pass-secrets` plugin owns scheme "pass"; both must register."""
+    from agent.secret_sources import registry
+
+    class PasswordStore(pp.SecretSource):
+        name, label, shape, scheme = "pass", "pass (password-store)", "bulk", "pass"
+
+        def fetch(self, cfg, home_path):
+            return pp.FetchResult()
+
+    registry._reset_registry_for_tests()
+    monkeypatch.setattr(registry, "_ensure_builtin_sources", lambda: None)
+    try:
+        assert registry.register_source(PasswordStore())
+        assert registry.register_source(pp.ProtonPassSource())
+        assert registry.register_source(pp.ProtonPassVaultSource())
+    finally:
+        registry._reset_registry_for_tests()
+
+
 _kit = load_conformance()
 if _kit is not None:
     class TestMappedConformance(_kit.SecretSourceConformance):

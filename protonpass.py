@@ -396,7 +396,10 @@ class ProtonPassSource(_ProtonPassBase):
 
     name = "protonpass"
     shape = "mapped"
-    scheme = "pass"
+    # Refs are Proton's native pass://, validated in validate_refs(). The registry-level
+    # scheme claim is left unset on purpose: the catalog-listed `pass` (password-store) source
+    # already owns scheme "pass", and Hermes drops the second claimant entirely.
+    scheme = None
 
     def config_schema(self) -> dict:
         return {
