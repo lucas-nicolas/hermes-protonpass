@@ -22,7 +22,8 @@ provenance labels are handled by Hermes' secret-source orchestrator, as for the 
 - Hermes Agent >= 0.20.1
 - `pass-cli` installed by you, following
   [Proton's installation guide](https://protonpass.github.io/pass-cli/get-started/installation/)
-  (the plugin never downloads binaries)
+  (the plugin never downloads binaries). Live-tested with pass-cli 2.4.2; error handling also
+  verified against 2.1.2.
 - A Proton Pass plan with CLI access
 
 ## Install
@@ -41,7 +42,7 @@ to an end-to-end-encrypted audit log (`pass-cli agent monitor hermes`):
 pass-cli agent create hermes --expiration 1m --vault "Hermes"
 # or a plain personal access token:
 #   pass-cli pat create --name hermes --expiration 1m
-#   pass-cli pat access grant ...   (grant it the vault, viewer role)
+#   pass-cli pat access grant --personal-access-token-name hermes --vault-name Hermes --role viewer
 ```
 
 Then on the Hermes host:
@@ -138,12 +139,27 @@ and Hermes continues with whatever `.env` already had.
 ## Development
 
 ```bash
-uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -e /path/to/hermes-agent pytest
-.venv/bin/python -m pytest tests -q
+git clone https://github.com/NousResearch/hermes-agent
+uv sync --project hermes-agent --locked --python 3.14   # Hermes <= 0.21: --python 3.11
+uv pip install --python hermes-agent/.venv/bin/python pytest
+hermes-agent/.venv/bin/python -m pytest tests -q
 ```
 
-The tests drive a fake `pass-cli` reproducing pass-cli 2.1.2's real messages and session layout,
-plus Hermes' own secret-source conformance kit. Thanks to
+The tests drive a fake `pass-cli` reproducing pass-cli's real messages and session layout
+(identical in 2.1.2 and 2.4.2), plus Hermes' own secret-source conformance kit. CI runs them on the
+`requires_hermes` floor, the latest release and Hermes `main`.
+
+`tests/live_e2e.py` is an opt-in end-to-end run against a **real** account (never in CI). It needs a
+logged-in `pass-cli` and a sandbox vault it may write to; it creates two throwaway items, a 1-day
+AI-agent token and a 1-day personal access token, checks own-session, agent-token and PAT modes
+(values, provenance, session reuse across processes, Proton audit-log reasons, no token on argv or
+outside `.env`), then deletes everything it created:
+
+```bash
+PP_E2E_VAULT=hermes python3 tests/live_e2e.py   # prints booleans/lengths only, never values
+```
+
+Thanks to
 [flamerged/hermes-protonpass-plugin](https://github.com/flamerged/hermes-protonpass-plugin),
 whose documented pass-cli findings (three-segment URIs, the `item list` JSON shape) saved real
 probing time; this is an independent, smaller implementation.
